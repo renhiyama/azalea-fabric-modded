@@ -2,9 +2,11 @@
 #![feature(error_generic_member_access)]
 #![feature(never_type)]
 
-pub mod account;
+mod account;
 mod client;
+mod entity_query;
 pub mod local_player;
+pub mod packet_decoder;
 pub mod ping;
 pub mod player;
 mod plugins;
@@ -13,16 +15,16 @@ mod plugins;
 #[doc(hidden)]
 pub mod test_utils;
 
-#[deprecated = "moved to `account::Account`."]
-pub type Account = account::Account;
-
+pub use account::{Account, AccountOpts};
 pub use azalea_physics::local_player::{PhysicsState, SprintDirection, WalkDirection};
 pub use azalea_protocol::common::client_information::ClientInformation;
 // Re-export bevy-tasks so plugins can make sure that they're using the same
 // version.
 pub use bevy_tasks;
 pub use client::{
-    InConfigState, InGameState, JoinedClientBundle, LocalPlayerBundle, start_ecs_runner,
+    Client, InConfigState, InGameState, JoinedClientBundle, LocalPlayerBundle, StartClientOpts,
+    start_ecs_runner,
 };
+pub use events::Event;
 pub use movement::{StartSprintEvent, StartWalkEvent};
 pub use plugins::*;

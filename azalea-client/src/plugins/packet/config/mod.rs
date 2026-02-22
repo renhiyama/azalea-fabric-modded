@@ -17,7 +17,7 @@ use crate::{
     connection::RawConnection,
     cookies::{RequestCookieEvent, StoreCookieEvent},
     disconnect::DisconnectEvent,
-    local_player::WorldHolder,
+    local_player::InstanceHolder,
     packet::game::{KeepAliveEvent, ResourcePackEvent},
 };
 
@@ -69,12 +69,12 @@ pub struct ConfigPacketHandler<'a> {
 }
 impl ConfigPacketHandler<'_> {
     pub fn registry_data(&mut self, p: &ClientboundRegistryData) {
-        as_system::<Query<&WorldHolder>>(self.ecs, |mut query| {
-            let world_holder = query.get_mut(self.player).unwrap();
-            let mut world = world_holder.shared.write();
+        as_system::<Query<&InstanceHolder>>(self.ecs, |mut query| {
+            let instance_holder = query.get_mut(self.player).unwrap();
+            let mut instance = instance_holder.instance.write();
 
             // add the new registry data
-            world
+            instance
                 .registries
                 .append(p.registry_id.clone(), p.entries.clone());
         });
@@ -94,7 +94,7 @@ impl ConfigPacketHandler<'_> {
             use azalea_registry::identifier::Identifier;
             self.ecs
                 .commands()
-                .trigger(SendConfigPacketEvent::new(
+                .trigger(events::SendConfigPacketEvent::new(
                     self.player,
                     ServerboundCustomPayload {
                         identifier: Identifier::new("fabric:registry/sync/complete"),
@@ -139,7 +139,7 @@ impl ConfigPacketHandler<'_> {
             payload.extend_from_slice(b"cardinal-components:world_sync\0");
             self.ecs
                 .commands()
-                .trigger(SendConfigPacketEvent::new(
+                .trigger(events::SendConfigPacketEvent::new(
                     self.player,
                     ServerboundCustomPayload {
                         identifier: Identifier::new("minecraft:register"),
@@ -148,14 +148,6 @@ impl ConfigPacketHandler<'_> {
                 ));
             tracing::info!("Registered Fabric and CCA channels with server");
         }
-
-        // Also emit event for FabricHandshakePlugin to handle c:version/c:register
-        as_system::<MessageWriter<_>>(self.ecs, |mut events| {
-            events.write(ReceiveConfigPacketEvent {
-                entity: self.player,
-                packet: std::sync::Arc::new(ClientboundConfigPacket::CustomPayload(p.clone())),
-            });
-        });
     }
 
     pub fn disconnect(&mut self, p: &ClientboundDisconnect) {

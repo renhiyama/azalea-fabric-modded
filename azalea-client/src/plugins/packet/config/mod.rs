@@ -82,6 +82,13 @@ impl ConfigPacketHandler<'_> {
 
     pub fn custom_payload(&mut self, p: &ClientboundCustomPayload) {
         debug!("Got custom payload packet {p:?}");
+        // Emit event for Fabric handshake handling
+        as_system::<MessageWriter<_>>(self.ecs, |mut events| {
+            events.write(ReceiveConfigPacketEvent {
+                entity: self.player,
+                packet: std::sync::Arc::new(ClientboundConfigPacket::CustomPayload(p.clone())),
+            });
+        });
     }
 
     pub fn disconnect(&mut self, p: &ClientboundDisconnect) {

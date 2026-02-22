@@ -210,7 +210,7 @@ pub fn poll_create_connection_task(
             let (read_conn, write_conn) = (read_conn.raw, write_conn.raw);
 
             let world = World::default();
-            let world_holder = WorldHolder::new(
+            let instance_holder = WorldHolder::new(
                 entity,
                 // default to an empty world, it'll be set correctly later when we
                 // get the login packet
@@ -225,7 +225,7 @@ pub fn poll_create_connection_task(
                         write_conn,
                         ConnectionProtocol::Login,
                     ),
-                    world_holder,
+                    instance_holder,
                     metadata: azalea_entity::metadata::PlayerMetadataBundle::default(),
                 },
                 InLoginState,

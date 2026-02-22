@@ -327,7 +327,7 @@ impl Client {
     /// then the shared world will be a superset of the client's world.
     pub fn world(&self) -> Arc<RwLock<Instance>> {
         let instance_holder = self.component::<WorldHolder>();
-        instance_holder.instance.clone()
+        instance_holder.shared.clone()
     }
 
     /// Get an `RwLock` with a reference to the world that this client has
@@ -341,7 +341,7 @@ impl Client {
     /// # }
     pub fn partial_world(&self) -> Arc<RwLock<PartialInstance>> {
         let instance_holder = self.component::<WorldHolder>();
-        instance_holder.partial_instance.clone()
+        instance_holder.partial.clone()
     }
 
     /// Returns whether we have a received the login packet yet.

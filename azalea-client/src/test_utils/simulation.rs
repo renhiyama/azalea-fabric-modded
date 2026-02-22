@@ -288,11 +288,11 @@ fn create_local_player_bundle(
     let raw_connection = RawConnection::new_networkless(connection_protocol);
 
     let world = World::default();
-    let world_holder = WorldHolder::new(entity, Arc::new(RwLock::new(world)));
+    let instance_holder = WorldHolder::new(entity, Arc::new(RwLock::new(world)));
 
     let local_player_bundle = LocalPlayerBundle {
         raw_connection,
-        world_holder,
+        instance_holder,
         metadata: PlayerMetadataBundle::default(),
     };
 

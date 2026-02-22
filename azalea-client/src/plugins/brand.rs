@@ -19,9 +19,9 @@ impl Plugin for BrandPlugin {
 
 pub fn send_brand(mut commands: Commands, mut removed: RemovedComponents<InLoginState>) {
     for entity in removed.read() {
-        let mut brand_data = Vec::new();
+        let mut brand_data: Vec<u8> = Vec::new();
         // pretend to be vanilla
-        let mut brand_data = Vec::new();
+        let mut brand_data: Vec<u8> = Vec::new();
         "vanilla".as_bytes().to_vec().azalea_write(&mut brand_data).unwrap();
         commands.trigger(SendConfigPacketEvent::new(
             entity,

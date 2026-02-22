@@ -797,7 +797,7 @@ impl GamePacketHandler<'_> {
                         commands_system_state.apply(world);
                     });
                 },
-            );
+            ));
         });
     }
 
@@ -836,7 +836,7 @@ impl GamePacketHandler<'_> {
                         entity_mut
                             .world_scope(|world| world.trigger(KnockbackEvent { entity, data }));
                     },
-            );
+                ));
             },
         );
     }
@@ -912,7 +912,7 @@ impl GamePacketHandler<'_> {
                             physics.set_old_pos(old_position);
                         });
                     },
-            );
+                ));
             },
         );
     }
@@ -957,7 +957,7 @@ impl GamePacketHandler<'_> {
                             entity = entity_mut.id()
                         );
                     },
-            );
+                ));
             },
         );
     }
@@ -1007,7 +1007,7 @@ impl GamePacketHandler<'_> {
                             *look_direction = new_look_direction;
                         }
                     },
-            );
+                ));
             },
         );
     }
@@ -1037,7 +1037,7 @@ impl GamePacketHandler<'_> {
                                 *look_direction = new_look_direction;
                             }
                         },
-            );
+                    ));
                 } else {
                     warn!(
                         "Got move entity rot packet for unknown entity id {}",
@@ -1228,7 +1228,7 @@ impl GamePacketHandler<'_> {
                             entity.insert(active_effects);
                         }
                     },
-            );
+                ));
             },
         );
     }
@@ -1465,7 +1465,7 @@ impl GamePacketHandler<'_> {
                             active_effects.remove(mob_effect);
                         }
                     },
-            );
+                ));
             },
         );
     }
@@ -1653,7 +1653,7 @@ impl GamePacketHandler<'_> {
                         let mut look_direction = entity_mut.get_mut::<LookDirection>().unwrap();
                         *look_direction = new_look_direction;
                     },
-            );
+                ));
             },
         );
     }

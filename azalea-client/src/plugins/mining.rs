@@ -8,7 +8,7 @@ use azalea_inventory::ItemStack;
 use azalea_physics::{PhysicsSystems, collision::BlockWithShape};
 use azalea_protocol::packets::game::s_player_action::{self, ServerboundPlayerAction};
 use azalea_registry::builtin::{BlockKind, ItemKind};
-use azalea_world::{InstanceContainer, InstanceName};
+use azalea_world::{InstanceContainer, WorldName};
 use bevy_app::{App, Plugin, Update};
 use bevy_ecs::prelude::*;
 use derive_more::{Deref, DerefMut};
@@ -498,7 +498,7 @@ pub struct FinishMiningBlockEvent {
 pub fn handle_finish_mining_block_observer(
     finish_mining_block: On<FinishMiningBlockEvent>,
     mut query: Query<(
-        &InstanceName,
+        &WorldName,
         &LocalGameMode,
         &Inventory,
         &PlayerAbilities,
@@ -607,7 +607,7 @@ pub fn decrement_mine_delay(mut query: Query<&mut MineDelay>) {
 pub fn continue_mining_block(
     mut query: Query<(
         Entity,
-        &InstanceName,
+        &WorldName,
         &LocalGameMode,
         &Inventory,
         &MineBlockPos,

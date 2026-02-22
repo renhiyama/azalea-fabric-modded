@@ -8,19 +8,20 @@ use azalea_inventory::ItemStack;
 use azalea_physics::{PhysicsSystems, collision::BlockWithShape};
 use azalea_protocol::packets::game::s_player_action::{self, ServerboundPlayerAction};
 use azalea_registry::builtin::{BlockKind, ItemKind};
-use azalea_world::{WorldName, Worlds};
+use azalea_world::{InstanceContainer, InstanceName};
 use bevy_app::{App, Plugin, Update};
 use bevy_ecs::prelude::*;
 use derive_more::{Deref, DerefMut};
 use tracing::{debug, trace, warn};
 
 use crate::{
+    Client,
     interact::{
         BlockStatePredictionHandler, SwingArmEvent, can_use_game_master_blocks,
         check_is_interaction_restricted, pick::HitResultComponent,
     },
     inventory::InventorySystems,
-    local_player::{LocalGameMode, PermissionLevel, WorldHolder},
+    local_player::{InstanceHolder, LocalGameMode, PermissionLevel},
     movement::MoveEventsSystems,
     packet::game::SendGamePacketEvent,
 };
@@ -69,6 +70,31 @@ impl Plugin for MiningPlugin {
 /// The Bevy system set for things related to mining.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, SystemSet)]
 pub struct MiningSystems;
+
+impl Client {
+    pub fn start_mining(&self, position: BlockPos) {
+        let mut ecs = self.ecs.lock();
+
+        ecs.write_message(StartMiningBlockEvent {
+            entity: self.entity,
+            position,
+            force: true,
+        });
+    }
+
+    /// When enabled, the bot will mine any block that it is looking at if it is
+    /// reachable.
+    pub fn left_click_mine(&self, enabled: bool) {
+        let mut ecs = self.ecs.lock();
+        let mut entity_mut = ecs.entity_mut(self.entity);
+
+        if enabled {
+            entity_mut.insert(LeftClickMine);
+        } else {
+            entity_mut.remove::<LeftClickMine>();
+        }
+    }
+}
 
 /// A component that simulates the client holding down left click to mine the
 /// block that it's facing, but this only interacts with blocks and not
@@ -219,7 +245,7 @@ pub fn handle_mining_queued(
     query: Query<(
         Entity,
         &MiningQueued,
-        &WorldHolder,
+        &InstanceHolder,
         &LocalGameMode,
         &Inventory,
         &ActiveEffects,
@@ -240,7 +266,7 @@ pub fn handle_mining_queued(
     for (
         entity,
         mining_queued,
-        world_holder,
+        instance_holder,
         game_mode,
         inventory,
         active_effects,
@@ -261,9 +287,9 @@ pub fn handle_mining_queued(
         trace!("handle_mining_queued {mining_queued:?}");
         commands.entity(entity).remove::<MiningQueued>();
 
-        let world = world_holder.shared.read();
+        let instance = instance_holder.instance.read();
         if check_is_interaction_restricted(
-            &world,
+            &instance,
             mining_queued.position,
             &game_mode.current,
             inventory,
@@ -320,7 +346,7 @@ pub fn handle_mining_queued(
                 ));
             }
 
-            let target_block_state = world
+            let target_block_state = instance
                 .get_block_state(mining_queued.position)
                 .unwrap_or_default();
 
@@ -342,7 +368,7 @@ pub fn handle_mining_queued(
             if block_is_solid
                 && get_mine_progress(
                     block.as_ref(),
-                    held_item,
+                    held_item.kind(),
                     fluid_on_eyes,
                     physics,
                     attributes,
@@ -472,7 +498,7 @@ pub struct FinishMiningBlockEvent {
 pub fn handle_finish_mining_block_observer(
     finish_mining_block: On<FinishMiningBlockEvent>,
     mut query: Query<(
-        &WorldName,
+        &InstanceName,
         &LocalGameMode,
         &Inventory,
         &PlayerAbilities,
@@ -480,12 +506,12 @@ pub fn handle_finish_mining_block_observer(
         &Position,
         &mut BlockStatePredictionHandler,
     )>,
-    worlds: Res<Worlds>,
+    instances: Res<InstanceContainer>,
 ) {
     let event = finish_mining_block.event();
 
     let (
-        world_name,
+        instance_name,
         game_mode,
         inventory,
         abilities,
@@ -493,9 +519,9 @@ pub fn handle_finish_mining_block_observer(
         player_pos,
         mut prediction_handler,
     ) = query.get_mut(finish_mining_block.entity).unwrap();
-    let world_lock = worlds.get(world_name).unwrap();
-    let world = world_lock.read();
-    if check_is_interaction_restricted(&world, event.position, &game_mode.current, inventory) {
+    let instance_lock = instances.get(instance_name).unwrap();
+    let instance = instance_lock.read();
+    if check_is_interaction_restricted(&instance, event.position, &game_mode.current, inventory) {
         return;
     }
 
@@ -508,7 +534,7 @@ pub fn handle_finish_mining_block_observer(
         }
     }
 
-    let Some(block_state) = world.get_block_state(event.position) else {
+    let Some(block_state) = instance.get_block_state(event.position) else {
         return;
     };
 
@@ -528,7 +554,7 @@ pub fn handle_finish_mining_block_observer(
     // when we break a waterlogged block we want to keep the water there
     let fluid_state = FluidState::from(block_state);
     let block_state_for_fluid = BlockState::from(fluid_state);
-    let old_state = world
+    let old_state = instance
         .set_block_state(event.position, block_state_for_fluid)
         .unwrap_or_default();
     prediction_handler.retain_known_server_state(event.position, old_state, **player_pos);
@@ -581,7 +607,7 @@ pub fn decrement_mine_delay(mut query: Query<&mut MineDelay>) {
 pub fn continue_mining_block(
     mut query: Query<(
         Entity,
-        &WorldName,
+        &InstanceName,
         &LocalGameMode,
         &Inventory,
         &MineBlockPos,
@@ -598,11 +624,11 @@ pub fn continue_mining_block(
     )>,
     mut commands: Commands,
     mut mine_block_progress_events: MessageWriter<MineBlockProgressEvent>,
-    worlds: Res<Worlds>,
+    instances: Res<InstanceContainer>,
 ) {
     for (
         entity,
-        world_name,
+        instance_name,
         game_mode,
         inventory,
         current_mining_pos,
@@ -644,9 +670,9 @@ pub fn continue_mining_block(
             )
         {
             trace!("continue mining block at {:?}", mining.pos);
-            let world_lock = worlds.get(world_name).unwrap();
-            let world = world_lock.read();
-            let target_block_state = world.get_block_state(mining.pos).unwrap_or_default();
+            let instance_lock = instances.get(instance_name).unwrap();
+            let instance = instance_lock.read();
+            let target_block_state = instance.get_block_state(mining.pos).unwrap_or_default();
 
             trace!("target_block_state: {target_block_state:?}");
 
@@ -657,7 +683,7 @@ pub fn continue_mining_block(
             let block = Box::<dyn BlockTrait>::from(target_block_state);
             **mine_progress += get_mine_progress(
                 block.as_ref(),
-                current_mining_item,
+                current_mining_item.kind(),
                 fluid_on_eyes,
                 physics,
                 attributes,

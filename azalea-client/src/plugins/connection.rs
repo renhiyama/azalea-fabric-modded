@@ -97,7 +97,17 @@ pub fn read_packets(ecs: &mut World) {
                         state,
                         &mut queued_packet_events,
                     ) {
-                        error!("Error reading packet: {e}");
+                        // Ignore errors for unknown modded packet data
+                        // The bot can still function with vanilla features
+                        let error_str = format!("{}", e);
+                        if error_str.contains("Unknown tag")
+                            || error_str.contains("Leftover data")
+                            || error_str.contains("Invalid root type")
+                        {
+                            tracing::debug!("Ignoring modded packet error: {e}");
+                        } else {
+                            error!("Error reading packet: {e}");
+                        }
                     }
                 }
                 Ok(None) => {

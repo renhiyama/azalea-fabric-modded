@@ -57,7 +57,7 @@ use crate::{
     events::Event,
     interact::BlockStatePredictionHandler,
     join::{ConnectOpts, StartJoinServerEvent},
-    local_player::{Hunger, WorldHolder, PermissionLevel, TabList},
+    local_player::{Hunger, InstanceHolder, PermissionLevel, TabList},
     mining::{self},
     movement::LastSentLookDirection,
     packet::game::SendGamePacketEvent,
@@ -321,13 +321,13 @@ impl Client {
 
     /// Get an `RwLock` with a reference to our (potentially shared) world.
     ///
-    /// This gets the [`Instance`] from the client's [`WorldHolder`]
+    /// This gets the [`Instance`] from the client's [`InstanceHolder`]
     /// component. If it's a normal client, then it'll be the same as the
     /// world the client has loaded. If the client is using a shared world,
     /// then the shared world will be a superset of the client's world.
     pub fn world(&self) -> Arc<RwLock<Instance>> {
-        let instance_holder = self.component::<WorldHolder>();
-        instance_holder.shared.clone()
+        let instance_holder = self.component::<InstanceHolder>();
+        instance_holder.instance.clone()
     }
 
     /// Get an `RwLock` with a reference to the world that this client has
@@ -340,8 +340,8 @@ impl Client {
     /// let is_0_0_loaded = world.read().chunks.limited_get(&ChunkPos::new(0, 0)).is_some();
     /// # }
     pub fn partial_world(&self) -> Arc<RwLock<PartialInstance>> {
-        let instance_holder = self.component::<WorldHolder>();
-        instance_holder.partial.clone()
+        let instance_holder = self.component::<InstanceHolder>();
+        instance_holder.partial_instance.clone()
     }
 
     /// Returns whether we have a received the login packet yet.
@@ -530,7 +530,7 @@ impl Client {
 #[derive(Bundle)]
 pub struct LocalPlayerBundle {
     pub raw_connection: RawConnection,
-    pub instance_holder: WorldHolder,
+    pub instance_holder: InstanceHolder,
 
     pub metadata: azalea_entity::metadata::PlayerMetadataBundle,
 }
@@ -543,7 +543,7 @@ pub struct LocalPlayerBundle {
 /// If you want to filter for this, use [`InGameState`].
 #[derive(Bundle, Default)]
 pub struct JoinedClientBundle {
-    // note that WorldHolder isn't here because it's set slightly before we fully join the world
+    // note that InstanceHolder isn't here because it's set slightly before we fully join the world
     pub physics_state: PhysicsState,
     pub inventory: Inventory,
     pub tab_list: TabList,

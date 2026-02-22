@@ -11,7 +11,7 @@ use azalea_protocol::{
         login::{ClientboundLoginPacket, ServerboundHello, ServerboundLoginPacket},
     },
 };
-use azalea_world::World;
+use azalea_world::Instance;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_tasks::{IoTaskPool, Task, futures_lite::future};
@@ -19,11 +19,10 @@ use parking_lot::RwLock;
 use tokio::sync::mpsc;
 use tracing::{debug, warn};
 
+use super::events::LocalPlayerEvents;
 use crate::{
-    LocalPlayerBundle,
-    account::Account,
+    Account, LocalPlayerBundle,
     connection::RawConnection,
-    local_player::WorldHolder,
     packet::login::{InLoginState, SendLoginPacketEvent},
 };
 
@@ -52,6 +51,7 @@ impl Plugin for JoinPlugin {
 pub struct StartJoinServerEvent {
     pub account: Account,
     pub connect_opts: ConnectOpts,
+    pub event_sender: Option<mpsc::UnboundedSender<crate::Event>>,
 
     // this is mpsc instead of oneshot so it can be cloned (since it's sent in an event)
     pub start_join_callback_tx: Option<mpsc::UnboundedSender<Entity>>,
@@ -86,8 +86,7 @@ pub struct ConnectOpts {
 #[derive(Message)]
 pub struct ConnectionFailedEvent {
     pub entity: Entity,
-    // wrap it in Arc so it can be cloned
-    pub error: Arc<ConnectionError>,
+    pub error: ConnectionError,
 }
 
 pub fn handle_start_join_server_event(
@@ -97,7 +96,7 @@ pub fn handle_start_join_server_event(
     connection_query: Query<&RawConnection>,
 ) {
     for event in events.read() {
-        let uuid = event.account.uuid();
+        let uuid = event.account.uuid_or_offline();
         let entity = if let Some(entity) = entity_uuid_index.get(&uuid) {
             debug!("Reusing entity {entity:?} for client");
 
@@ -147,6 +146,12 @@ pub fn handle_start_join_server_event(
             // there's no InHandshakeState component since we switch off of the handshake state
             // immediately when the connection is created
         ));
+
+        if let Some(event_sender) = &event.event_sender {
+            // this is optional so we don't leak memory in case the user doesn't want to
+            // handle receiving packets
+            entity_mut.insert(LocalPlayerEvents(event_sender.clone()));
+        }
 
         let task_pool = IoTaskPool::get();
         let connect_opts = event.connect_opts.clone();
@@ -198,10 +203,7 @@ pub fn poll_create_connection_task(
                 Ok(conn) => conn,
                 Err(error) => {
                     warn!("failed to create connection: {error}");
-                    connection_failed_events.write(ConnectionFailedEvent {
-                        entity,
-                        error: Arc::new(error),
-                    });
+                    connection_failed_events.write(ConnectionFailedEvent { entity, error });
                     return;
                 }
             };
@@ -209,12 +211,12 @@ pub fn poll_create_connection_task(
             let (read_conn, write_conn) = conn.into_split();
             let (read_conn, write_conn) = (read_conn.raw, write_conn.raw);
 
-            let world = World::default();
-            let instance_holder = WorldHolder::new(
+            let instance = Instance::default();
+            let instance_holder = crate::local_player::InstanceHolder::new(
                 entity,
                 // default to an empty world, it'll be set correctly later when we
                 // get the login packet
-                Arc::new(RwLock::new(world)),
+                Arc::new(RwLock::new(instance)),
             );
 
             entity_mut.insert((
@@ -234,8 +236,8 @@ pub fn poll_create_connection_task(
             commands.trigger(SendLoginPacketEvent::new(
                 entity,
                 ServerboundHello {
-                    name: account.username().to_owned(),
-                    profile_id: account.uuid(),
+                    name: account.username.clone(),
+                    profile_id: account.uuid_or_offline(),
                 },
             ));
         }

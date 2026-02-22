@@ -17,7 +17,7 @@ use azalea_physics::{
     clip::{BlockShapeType, ClipContext, FluidPickType},
     collision::entity_collisions::{AabbQuery, get_entities},
 };
-use azalea_world::{World, WorldName, Worlds};
+use azalea_world::{Instance, InstanceContainer, InstanceName};
 use bevy_ecs::prelude::*;
 use derive_more::{Deref, DerefMut};
 
@@ -37,13 +37,13 @@ pub fn update_hit_result_component(
             &Position,
             &EntityDimensions,
             &LookDirection,
-            &WorldName,
+            &InstanceName,
             &Physics,
             &Attributes,
         ),
         With<LocalEntity>,
     >,
-    worlds: Res<Worlds>,
+    instance_container: Res<InstanceContainer>,
     aabb_query: AabbQuery,
     pickable_query: MaybePickableEntityQuery,
 ) {
@@ -63,7 +63,7 @@ pub fn update_hit_result_component(
 
         let eye_position = position.up(dimensions.eye_height.into());
 
-        let Some(world_lock) = worlds.get(world_name) else {
+        let Some(world_lock) = instance_container.get(world_name) else {
             continue;
         };
         let world = world_lock.read();
@@ -117,7 +117,7 @@ pub struct PickOpts<'world, 'state, 'a, 'b, 'c> {
     look_direction: LookDirection,
     eye_position: Vec3,
     aabb: &'a Aabb,
-    world: &'a World,
+    world: &'a Instance,
     entity_pick_range: f64,
     block_pick_range: f64,
     aabb_query: &'a AabbQuery<'world, 'state, 'b>,
@@ -246,7 +246,7 @@ struct PickEntityOpts<'world, 'state, 'a, 'b> {
     source_entity: Entity,
     eye_position: Vec3,
     end_position: Vec3,
-    world: &'a azalea_world::World,
+    world: &'a azalea_world::Instance,
     pick_range_squared: f64,
     predicate: &'a dyn Fn(Entity) -> bool,
     aabb: &'a Aabb,

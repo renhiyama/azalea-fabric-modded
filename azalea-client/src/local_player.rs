@@ -1,37 +1,42 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    error, io,
+    sync::{Arc, PoisonError},
+};
 
 use azalea_core::game_type::GameMode;
-use azalea_world::{PartialWorld, World};
+use azalea_world::{Instance, PartialInstance};
 use bevy_ecs::{component::Component, prelude::*};
 use derive_more::{Deref, DerefMut};
 use parking_lot::RwLock;
+use thiserror::Error;
+use tokio::sync::mpsc;
 use uuid::Uuid;
 
-use crate::{ClientInformation, player::PlayerInfo};
+use crate::{ClientInformation, events::Event as AzaleaEvent, player::PlayerInfo};
 
-/// A component that keeps strong references to our [`PartialWorld`] and
-/// [`World`] for local players.
+/// A component that keeps strong references to our [`PartialInstance`] and
+/// [`Instance`] for local players.
 ///
-/// This can also act as a convenient way to access the player's `World`, since
-/// the alternative is to look up the player's [`WorldName`] in the [`Worlds`]
-/// resource.
+/// This can also act as a convenience for accessing the player's Instance since
+/// the alternative is to look up the player's [`InstanceName`] in the
+/// [`InstanceContainer`].
 ///
-/// [`Worlds`]: azalea_world::Worlds
-/// [`WorldName`]: azalea_world::WorldName
+/// [`InstanceContainer`]: azalea_world::InstanceContainer
+/// [`InstanceName`]: azalea_world::InstanceName
 #[derive(Clone, Component)]
-pub struct WorldHolder {
-    /// The slice of the world that this client actually has loaded, based on
-    /// its render distance.
-    pub partial: Arc<RwLock<PartialWorld>>,
-    /// The combined [`PartialWorld`]s of all clients in the same world.
+pub struct InstanceHolder {
+    /// The partial instance is the world this client currently has loaded.
     ///
-    /// The distinction between this and `partial` is mostly only relevant if
-    /// you're using a shared world (i.e. a swarm). If in doubt, prefer to use
-    /// the shared world.
-    pub shared: Arc<RwLock<World>>,
+    /// It has a limited render distance.
+    pub partial_instance: Arc<RwLock<PartialInstance>>,
+    /// The combined [`PartialInstance`]s of all clients in the same instance
+    /// (aka world/dimension).
+    ///
+    /// This is only relevant if you're using a shared world (i.e. a
+    /// swarm).
+    pub instance: Arc<RwLock<Instance>>,
 }
-#[deprecated = "renamed to `WorldHolder`."]
-pub type InstanceHolder = WorldHolder;
 
 /// The gamemode of a local player. For a non-local player, you can look up the
 /// player in the [`TabList`].
@@ -58,12 +63,13 @@ pub struct PermissionLevel(pub u8);
 ///
 /// ```
 /// # use azalea_client::local_player::TabList;
-/// fn example(tab_list: &TabList) {
-///     println!("Online players:");
-///     for (uuid, player_info) in tab_list.iter() {
-///         println!("- {} ({}ms)", player_info.profile.name, player_info.latency);
-///     }
+/// # fn example(client: &azalea_client::Client) {
+/// let tab_list = client.component::<TabList>();
+/// println!("Online players:");
+/// for (uuid, player_info) in tab_list.iter() {
+///     println!("- {} ({}ms)", player_info.profile.name, player_info.latency);
 /// }
+/// # }
 /// ```
 ///
 /// For convenience, `TabList` is also a resource in the ECS.
@@ -74,7 +80,7 @@ pub struct PermissionLevel(pub u8);
 #[derive(Clone, Component, Debug, Default, Deref, DerefMut, Resource)]
 pub struct TabList(HashMap<Uuid, PlayerInfo>);
 
-#[derive(Clone, Component, Debug)]
+#[derive(Clone, Component)]
 pub struct Hunger {
     /// The main hunger bar. This is typically in the range `0..=20`.
     pub food: u32,
@@ -82,7 +88,7 @@ pub struct Hunger {
     ///
     /// This isn't displayed in the vanilla Minecraft GUI, but it's used
     /// internally by the game. It's a decrementing counter, and the player's
-    /// [`Hunger::food`] only starts decreasing when their saturation reaches 0.
+    /// [`Hunger::food`] only starts decreasing when this reaches 0.
     pub saturation: f32,
 }
 
@@ -104,39 +110,18 @@ impl Hunger {
     }
 }
 
-/// The player's experience state.
-#[derive(Clone, Component, Debug)]
-pub struct Experience {
-    /// Progress towards the next level, in the range 0.0..1.0.
-    pub progress: f32,
-    /// The current experience level. You'll mostly be using this.
-    pub level: u32,
-    /// Total experience points accumulated.
-    pub total: u32,
-}
-
-impl Default for Experience {
-    fn default() -> Self {
-        Experience {
-            progress: 0.0,
-            level: 0,
-            total: 0,
-        }
-    }
-}
-
-impl WorldHolder {
-    /// Create a new `WorldHolder` for the given entity.
+impl InstanceHolder {
+    /// Create a new `InstanceHolder` for the given entity.
     ///
-    /// The partial world will be created for you. The render distance will
+    /// The partial instance will be created for you. The render distance will
     /// be set to a default value, which you can change by creating a new
-    /// partial world.
-    pub fn new(entity: Entity, shared: Arc<RwLock<World>>) -> Self {
+    /// partial_instance.
+    pub fn new(entity: Entity, instance: Arc<RwLock<Instance>>) -> Self {
         let client_information = ClientInformation::default();
 
-        WorldHolder {
-            shared,
-            partial: Arc::new(RwLock::new(PartialWorld::new(
+        InstanceHolder {
+            instance,
+            partial_instance: Arc::new(RwLock::new(PartialInstance::new(
                 azalea_world::chunk_storage::calculate_chunk_storage_range(
                     client_information.view_distance.into(),
                 ),
@@ -145,19 +130,37 @@ impl WorldHolder {
         }
     }
 
-    /// Reset the [`World`] to be a reference to an empty world, but with
+    /// Reset the `Instance` to a new reference to an empty instance, but with
     /// the same registries as the current one.
     ///
     /// This is used by Azalea when entering the config state.
     pub fn reset(&mut self) {
-        let registries = self.shared.read().registries.clone();
+        let registries = self.instance.read().registries.clone();
 
-        let new_world = World {
+        let new_instance = Instance {
             registries,
             ..Default::default()
         };
-        self.shared = Arc::new(RwLock::new(new_world));
+        self.instance = Arc::new(RwLock::new(new_instance));
 
-        self.partial.write().reset();
+        self.partial_instance.write().reset();
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum HandlePacketError {
+    #[error("{0}")]
+    Poison(String),
+    #[error(transparent)]
+    Io(#[from] io::Error),
+    #[error(transparent)]
+    Other(#[from] Box<dyn error::Error + Send + Sync>),
+    #[error("{0}")]
+    Send(#[from] mpsc::error::SendError<AzaleaEvent>),
+}
+
+impl<T> From<PoisonError<T>> for HandlePacketError {
+    fn from(e: PoisonError<T>) -> Self {
+        HandlePacketError::Poison(e.to_string())
     }
 }

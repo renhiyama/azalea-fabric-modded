@@ -1,10 +1,10 @@
 use azalea_core::tick::GameTick;
 use azalea_physics::PhysicsSystems;
-use azalea_world::WorldName;
+use azalea_world::InstanceName;
 use bevy_app::{App, Plugin};
 use bevy_ecs::prelude::*;
 
-use crate::{mining::MiningSystems, movement::send_position};
+use crate::{mining::MiningSystems, movement::send_position, tick_broadcast::send_tick_broadcast};
 
 /// Counts the number of game ticks elapsed on the **local client** since the
 /// `login` packet was received.
@@ -22,14 +22,14 @@ impl Plugin for TickCounterPlugin {
             increment_counter
                 .before(PhysicsSystems)
                 .before(MiningSystems)
-                .before(send_position),
+                .before(send_position)
+                .before(send_tick_broadcast),
         );
     }
 }
 
-/// Increment the [`TicksConnected`] component for every entity that's in any
-/// world.
-pub fn increment_counter(mut query: Query<&mut TicksConnected, With<WorldName>>) {
+/// Increment the [`GameTickCounter`] on every entity that lives in an instance.
+fn increment_counter(mut query: Query<&mut TicksConnected, With<InstanceName>>) {
     for mut counter in &mut query {
         counter.0 += 1;
     }

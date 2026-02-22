@@ -4,7 +4,7 @@ use azalea_core::tick::GameTick;
 use azalea_entity::LocalEntity;
 use azalea_physics::PhysicsSystems;
 use azalea_protocol::packets::game::ServerboundClientTickEnd;
-use azalea_world::WorldName;
+use azalea_world::InstanceName;
 use bevy_app::{App, Plugin};
 use bevy_ecs::prelude::*;
 
@@ -27,7 +27,7 @@ impl Plugin for TickEndPlugin {
 }
 
 pub fn game_tick_packet(
-    query: Query<Entity, (With<LocalEntity>, With<WorldName>)>,
+    query: Query<Entity, (With<LocalEntity>, With<InstanceName>)>,
     mut commands: Commands,
 ) {
     for entity in query.iter() {

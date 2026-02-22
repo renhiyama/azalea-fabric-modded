@@ -28,6 +28,3 @@ pub use client::{
 pub use events::Event;
 pub use movement::{StartSprintEvent, StartWalkEvent};
 pub use plugins::*;
-
-pub mod entity_query;
-pub mod packet_decoder;

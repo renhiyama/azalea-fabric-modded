@@ -329,7 +329,7 @@ pub fn make_basic_login_packet(
     dimension: Identifier,
 ) -> ClientboundLogin {
     ClientboundLogin {
-        player_id: MinecraftEntityId(0),
+        player_id: azalea_core::entity_id::azalea_core::entity_id::MinecraftEntityId(0),
         hardcore: false,
         levels: vec![],
         max_players: 20,

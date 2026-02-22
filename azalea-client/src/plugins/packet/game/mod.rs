@@ -1,4 +1,6 @@
 mod events;
+use azalea_world::WorldName;
+use azalea_world::WorldName;
 
 use std::{collections::HashSet, sync::Arc};
 
@@ -243,7 +245,7 @@ impl GamePacketHandler<'_> {
                 } else {
                     commands
                         .entity(self.player)
-                        .insert(InstanceName(new_instance_name.clone()));
+                        .insert(WorldName(new_instance_name.clone()));
                 }
 
                 let weak_instance;
@@ -1519,7 +1521,7 @@ impl GamePacketHandler<'_> {
                 } else {
                     commands
                         .entity(self.player)
-                        .insert(InstanceName(new_instance_name.clone()));
+                        .insert(WorldName(new_instance_name.clone()));
                 }
 
                 let weak_instance;

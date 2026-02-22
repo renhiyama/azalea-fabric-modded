@@ -21,7 +21,8 @@ pub fn send_brand(mut commands: Commands, mut removed: RemovedComponents<InLogin
     for entity in removed.read() {
         let mut brand_data = Vec::new();
         // pretend to be vanilla
-        "vanilla".azalea_write(&mut brand_data).unwrap();
+        let mut brand_data = Vec::new();
+        "vanilla".as_bytes().to_vec().azalea_write(&mut brand_data).unwrap();
         commands.trigger(SendConfigPacketEvent::new(
             entity,
             ServerboundCustomPayload {

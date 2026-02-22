@@ -1,4 +1,4 @@
-use azalea_buf::AzaleaWrite;
+use azalea_buf::AzBuf;
 use azalea_protocol::packets::config::s_custom_payload::ServerboundCustomPayload;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;

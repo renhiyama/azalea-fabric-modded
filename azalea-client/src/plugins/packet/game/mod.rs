@@ -1,7 +1,9 @@
 mod events;
-use azalea_world::WorldName;
 use std::{collections::HashSet, sync::Arc};
 use super::relative_updates::RelativeEntityUpdate;
+use azalea_world::WorldName;
+
+
 use azalea_core::{
     game_type::GameMode,
     position::{ChunkPos, Vec3},
@@ -258,8 +260,7 @@ impl GamePacketHandler<'_> {
 
                     // add this world to the instance_container (or don't if it's already
                     // there)
-                    weak_instance = instance_container.get_or_insert(
-                        new_instance_name.clone(),
+                    weak_instance = instance_container.get_or_insert(WorldName(new_instance_name.clone()),
                         dimension_data.height,
                         dimension_data.min_y,
                         client_registries,
@@ -291,12 +292,7 @@ impl GamePacketHandler<'_> {
                 }
                 instance_holder.instance = weak_instance;
 
-                let entity_bundle = EntityBundle::new(
-                    game_profile.uuid,
-                    Vec3::ZERO,
-                    EntityKind::Player,
-                    new_instance_name,
-                );
+                let entity_bundle = EntityBundle::new(game_profile.uuid, Vec3::ZERO, EntityKind::Player, WorldName(new_instance_name.clone()));
                 let entity_id = p.player_id;
                 // insert our components into the ecs :)
                 commands.entity(self.player).insert((
@@ -708,7 +704,7 @@ impl GamePacketHandler<'_> {
 
                 // entity doesn't exist in the global index!
 
-                let bundle = p.as_entity_bundle((**instance_name).clone());
+                let bundle = p.as_entity_bundle(instance_name.clone());
                 let mut spawned =
                     commands.spawn((entity_id, LoadedBy(HashSet::from([self.player])), bundle));
                 let ecs_entity: Entity = spawned.id();
@@ -1533,8 +1529,7 @@ impl GamePacketHandler<'_> {
 
                     // add this world to the instance_container (or don't if it's already
                     // there)
-                    weak_instance = instance_container.get_or_insert(
-                        new_instance_name.clone(),
+                    weak_instance = instance_container.get_or_insert(WorldName(new_instance_name.clone()),
                         dimension_data.height,
                         dimension_data.min_y,
                         client_registries,
@@ -1564,12 +1559,7 @@ impl GamePacketHandler<'_> {
                 }
 
                 // this resets a bunch of our components like physics and stuff
-                let entity_bundle = EntityBundle::new(
-                    game_profile.uuid,
-                    Vec3::ZERO,
-                    EntityKind::Player,
-                    new_instance_name,
-                );
+                let entity_bundle = EntityBundle::new(game_profile.uuid, Vec3::ZERO, EntityKind::Player, WorldName(new_instance_name.clone()));
                 // update the local gamemode and metadata things
                 commands.entity(self.player).insert((
                     LocalGameMode {

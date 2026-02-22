@@ -5,7 +5,7 @@ use std::sync::Arc;
 use azalea::{BlockPos, pathfinder::goals::RadiusGoal, prelude::*};
 use azalea_inventory::ItemStack;
 use azalea_registry::builtin::{BlockKind, ItemKind};
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 
 #[tokio::main]
 async fn main() -> AppExit {
@@ -20,8 +20,8 @@ async fn main() -> AppExit {
 
 #[derive(Clone, Component, Default)]
 struct State {
-    pub is_stealing: Arc<Mutex<bool>>,
-    pub checked_chests: Arc<Mutex<Vec<BlockPos>>>,
+    pub is_stealing: Arc<RwLock<bool>>,
+    pub checked_chests: Arc<RwLock<Vec<BlockPos>>>,
 }
 
 async fn handle(bot: Client, event: Event, state: State) -> anyhow::Result<()> {

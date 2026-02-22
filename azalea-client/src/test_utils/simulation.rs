@@ -38,7 +38,7 @@ use bevy_ecs::{
     query::{QueryData, QueryItem},
     schedule::ExecutorKind,
 };
-use parking_lot::{Mutex, RwLock};
+use parking_lot::RwLock;
 use simdnbt::owned::{NbtCompound, NbtTag};
 use uuid::Uuid;
 
@@ -197,7 +197,7 @@ impl Simulation {
 
 #[derive(Clone)]
 pub struct SentPackets {
-    pub list: Arc<Mutex<VecDeque<ServerboundGamePacket>>>,
+    pub list: Arc<RwLock<VecDeque<ServerboundGamePacket>>>,
 }
 impl SentPackets {
     pub fn new(simulation: &mut Simulation) -> Self {
@@ -213,7 +213,7 @@ impl SentPackets {
                 if send_game_packet.sent_by == simulation_entity {
                     sent_packets_clone
                         .list
-                        .lock()
+                        .write()
                         .push_back(send_game_packet.packet.clone())
                 }
             });
@@ -222,7 +222,7 @@ impl SentPackets {
     }
 
     pub fn clear(&self) {
-        self.list.lock().clear();
+        self.list.write().clear();
     }
 
     pub fn expect_tick_end(&self) {
@@ -267,10 +267,10 @@ impl SentPackets {
     }
 
     pub fn next(&self) -> Option<ServerboundGamePacket> {
-        self.list.lock().pop_front()
+        self.list.write().pop_front()
     }
     pub fn peek(&self) -> Option<ServerboundGamePacket> {
-        self.list.lock().front().cloned()
+        self.list.write().front().cloned()
     }
 }
 

@@ -13,7 +13,7 @@ use tokio::sync::broadcast;
 /// use azalea_client::tick_broadcast::TickBroadcast;
 /// # async fn example(client: azalea_client::Client) {
 /// let mut receiver = {
-///     let ecs = client.ecs.lock();
+///     let ecs = client.ecs.write();
 ///     let tick_broadcast = ecs.resource::<TickBroadcast>();
 ///     tick_broadcast.subscribe()
 /// };

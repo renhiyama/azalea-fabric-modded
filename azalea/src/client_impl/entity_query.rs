@@ -9,7 +9,7 @@ use bevy_ecs::{
     query::{QueryData, QueryEntityError, QueryFilter, QueryItem, ROQueryItem},
     world::World,
 };
-use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
+use parking_lot::{RwLock, MappedRwLockReadGuard, RwLockReadGuard};
 
 use crate::{Client, entity_ref::EntityRef};
 

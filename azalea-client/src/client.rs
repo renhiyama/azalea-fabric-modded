@@ -35,7 +35,7 @@ use bevy_ecs::{
     prelude::*,
     schedule::{InternedScheduleLabel, LogLevel, ScheduleBuildSettings},
 };
-use parking_lot::{Mutex, RwLock};
+use parking_lot::RwLock;
 use tokio::{
     sync::{
         mpsc::{self},
@@ -83,11 +83,11 @@ pub struct Client {
     /// You probably don't need to access this directly. Note that if you're
     /// using a shared world (i.e. a swarm), the ECS will contain all entities
     /// in all instances/dimensions.
-    pub ecs: Arc<Mutex<World>>,
+    pub ecs: Arc<RwLock<World>>,
 }
 
 pub struct StartClientOpts {
-    pub ecs_lock: Arc<Mutex<World>>,
+    pub ecs_lock: Arc<RwLock<World>>,
     pub account: Account,
     pub connect_opts: ConnectOpts,
     pub event_sender: Option<mpsc::UnboundedSender<Event>>,
@@ -154,7 +154,7 @@ impl Client {
     /// World, and schedule runner function.
     /// You should only use this if you want to change these fields from the
     /// defaults, otherwise use [`Client::join`].
-    pub fn new(entity: Entity, ecs: Arc<Mutex<World>>) -> Self {
+    pub fn new(entity: Entity, ecs: Arc<RwLock<World>>) -> Self {
         Self {
             // default our id to 0, it'll be set later
             entity,
@@ -222,7 +222,7 @@ impl Client {
         let (start_join_callback_tx, mut start_join_callback_rx) =
             mpsc::unbounded_channel::<Entity>();
 
-        ecs_lock.lock().write_message(StartJoinServerEvent {
+        ecs_lock.write().write_message(StartJoinServerEvent {
             account,
             connect_opts,
             event_sender,
@@ -240,7 +240,7 @@ impl Client {
     pub fn write_packet(&self, packet: impl Packet<ServerboundGamePacket>) {
         let packet = packet.into_variant();
         self.ecs
-            .lock()
+            .write()
             .commands()
             .trigger(SendGamePacketEvent::new(self.entity, packet));
     }
@@ -250,7 +250,7 @@ impl Client {
     /// The OwnedReadHalf for the TCP connection is in one of the tasks, so it
     /// automatically closes the connection when that's dropped.
     pub fn disconnect(&self) {
-        self.ecs.lock().write_message(DisconnectEvent {
+        self.ecs.write().write_message(DisconnectEvent {
             entity: self.entity,
             reason: None,
         });
@@ -302,19 +302,19 @@ impl Client {
 
     /// Get a resource from the ECS. This will clone the resource and return it.
     pub fn resource<T: Resource + Clone>(&self) -> T {
-        self.ecs.lock().resource::<T>().clone()
+        self.ecs.write().resource::<T>().clone()
     }
 
     /// Get a required ECS resource and call the given function with it.
     pub fn map_resource<T: Resource, R>(&self, f: impl FnOnce(&T) -> R) -> R {
-        let ecs = self.ecs.lock();
+        let ecs = self.ecs.write();
         let value = ecs.resource::<T>();
         f(value)
     }
 
     /// Get an optional ECS resource and call the given function with it.
     pub fn map_get_resource<T: Resource, R>(&self, f: impl FnOnce(Option<&T>) -> R) -> R {
-        let ecs = self.ecs.lock();
+        let ecs = self.ecs.write();
         let value = ecs.get_resource::<T>();
         f(value)
     }
@@ -605,7 +605,7 @@ impl Plugin for AzaleaPlugin {
 #[doc(hidden)]
 pub fn start_ecs_runner(
     app: &mut SubApp,
-) -> (Arc<Mutex<World>>, impl FnOnce(), oneshot::Receiver<AppExit>) {
+) -> (Arc<RwLock<World>>, impl FnOnce(), oneshot::Receiver<AppExit>) {
     // this block is based on Bevy's default runner:
     // https://github.com/bevyengine/bevy/blob/390877cdae7a17095a75c8f9f1b4241fe5047e83/crates/bevy_app/src/schedule_runner.rs#L77-L85
     if app.plugins_state() != PluginsState::Cleaned {
@@ -623,7 +623,7 @@ pub fn start_ecs_runner(
 
     // all resources should have been added by now so we can take the ecs from the
     // app
-    let ecs = Arc::new(Mutex::new(mem::take(app.world_mut())));
+    let ecs = Arc::new(RwLock::new(mem::take(app.world_mut())));
 
     let ecs_clone = ecs.clone();
     let outer_schedule_label = *app.update_schedule.as_ref().unwrap();
@@ -644,7 +644,7 @@ pub fn start_ecs_runner(
 ///
 /// Exits when we receive an `AppExit` event.
 async fn run_schedule_loop(
-    ecs: Arc<Mutex<World>>,
+    ecs: Arc<RwLock<World>>,
     outer_schedule_label: InternedScheduleLabel,
 ) -> AppExit {
     let mut last_update: Option<Instant> = None;
@@ -668,7 +668,7 @@ async fn run_schedule_loop(
         }
         last_update = Some(now);
 
-        let mut ecs = ecs.lock();
+        let mut ecs = ecs.write();
 
         // if last tick is None or more than 50ms ago, run the GameTick schedule
         ecs.run_schedule(outer_schedule_label);

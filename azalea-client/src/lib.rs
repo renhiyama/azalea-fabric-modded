@@ -2,7 +2,7 @@
 #![feature(error_generic_member_access)]
 #![feature(never_type)]
 
-mod account;
+pub mod account;
 mod client;
 mod entity_query;
 pub mod local_player;

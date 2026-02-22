@@ -7,7 +7,7 @@ use azalea_auth::AccessTokenResponse;
 #[cfg(feature = "online-mode")]
 use azalea_auth::certs::{Certificates, FetchCertificatesError};
 use bevy_ecs::component::Component;
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 #[cfg(feature = "online-mode")]
 use thiserror::Error;
 use uuid::Uuid;
@@ -41,8 +41,8 @@ pub struct Account {
     ///
     /// You can obtain one of these manually from azalea-auth.
     ///
-    /// This is an `Arc<Mutex>` so it can be modified by [`Self::refresh`].
-    pub access_token: Option<Arc<Mutex<String>>>,
+    /// This is an `Arc<RwLock>` so it can be modified by [`Self::refresh`].
+    pub access_token: Option<Arc<RwLock<String>>>,
     /// Only required for online-mode accounts.
     pub uuid: Option<Uuid>,
 
@@ -59,7 +59,7 @@ pub struct Account {
     /// This is set when you call [`Self::request_certs`], but you only
     /// need to if the servers you're joining require it.
     #[cfg(feature = "online-mode")]
-    pub certs: Arc<Mutex<Option<Certificates>>>,
+    pub certs: Arc<RwLock<Option<Certificates>>>,
 }
 
 /// The parameters that were passed for creating the associated [`Account`].
@@ -74,7 +74,7 @@ pub enum AccountOpts {
     },
     #[cfg(feature = "online-mode")]
     MicrosoftWithAccessToken {
-        msa: Arc<Mutex<azalea_auth::cache::ExpiringValue<AccessTokenResponse>>>,
+        msa: Arc<RwLock<azalea_auth::cache::ExpiringValue<AccessTokenResponse>>>,
     },
 }
 
@@ -92,7 +92,7 @@ impl Account {
                 username: username.to_owned(),
             },
             #[cfg(feature = "online-mode")]
-            certs: Arc::new(Mutex::new(None)),
+            certs: Arc::new(RwLock::new(None)),
         }
     }
 
@@ -134,13 +134,13 @@ impl Account {
         .await?;
         Ok(Self {
             username: auth_result.profile.name,
-            access_token: Some(Arc::new(Mutex::new(auth_result.access_token))),
+            access_token: Some(Arc::new(RwLock::new(auth_result.access_token))),
             uuid: Some(auth_result.profile.id),
             account_opts: AccountOpts::Microsoft {
                 email: cache_key.to_owned(),
             },
             // we don't do chat signing by default unless the user asks for it
-            certs: Arc::new(Mutex::new(None)),
+            certs: Arc::new(RwLock::new(None)),
         })
     }
 
@@ -206,12 +206,12 @@ impl Account {
 
         Ok(Self {
             username: profile.name,
-            access_token: Some(Arc::new(Mutex::new(res.minecraft_access_token))),
+            access_token: Some(Arc::new(RwLock::new(res.minecraft_access_token))),
             uuid: Some(profile.id),
             account_opts: AccountOpts::MicrosoftWithAccessToken {
-                msa: Arc::new(Mutex::new(msa)),
+                msa: Arc::new(RwLock::new(msa)),
             },
-            certs: Arc::new(Mutex::new(None)),
+            certs: Arc::new(RwLock::new(None)),
         })
     }
     /// Refresh the access_token for this account to be valid again.
@@ -227,24 +227,24 @@ impl Account {
             AccountOpts::Microsoft { email } => {
                 let new_account = Account::microsoft(email).await?;
                 let access_token_mutex = self.access_token.as_ref().unwrap();
-                let new_access_token = new_account.access_token.unwrap().lock().clone();
-                *access_token_mutex.lock() = new_access_token;
+                let new_access_token = new_account.access_token.unwrap().write().clone();
+                *access_token_mutex.write() = new_access_token;
                 Ok(())
             }
             AccountOpts::MicrosoftWithAccessToken { msa } => {
-                let msa_value = msa.lock().clone();
+                let msa_value = msa.write().clone();
                 let new_account = Account::with_microsoft_access_token(msa_value).await?;
 
                 let access_token_mutex = self.access_token.as_ref().unwrap();
-                let new_access_token = new_account.access_token.unwrap().lock().clone();
+                let new_access_token = new_account.access_token.unwrap().write().clone();
 
-                *access_token_mutex.lock() = new_access_token;
+                *access_token_mutex.write() = new_access_token;
                 let AccountOpts::MicrosoftWithAccessToken { msa: new_msa } =
                     new_account.account_opts
                 else {
                     unreachable!()
                 };
-                *msa.lock() = new_msa.lock().clone();
+                *msa.write() = new_msa.write().clone();
 
                 Ok(())
             }
@@ -286,10 +286,10 @@ impl Account {
             .access_token
             .as_ref()
             .ok_or(RequestCertError::NoAccessToken)?
-            .lock()
+            .write()
             .clone();
         let certs = azalea_auth::certs::fetch_certificates(&access_token).await?;
-        *self.certs.lock() = Some(certs);
+        *self.certs.write() = Some(certs);
 
         Ok(())
     }

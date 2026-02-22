@@ -161,7 +161,6 @@ impl Plugin for EventsPlugin {
                 keepalive_listener,
                 death_listener.after(azalea_client::packet::death_event_on_0_health),
                 disconnect_listener,
-                connection_failed_listener.after(azalea_client::join::poll_create_connection_task),
                 receive_chunk_listener,
             ),
         )
@@ -312,16 +311,15 @@ pub fn disconnect_listener(
     }
 }
 
-pub fn connection_failed_listener(
-    query: Query<&LocalPlayerEvents>,
-    mut events: MessageReader<ConnectionFailedEvent>,
-) {
-    for event in events.read() {
-        if let Ok(local_player_events) = query.get(event.entity) {
-            let _ = local_player_events.send(Event::ConnectionFailed(event.error.clone()));
-        }
-    }
-}
+//     query: Query<&LocalPlayerEvents>,
+//     mut events: MessageReader<ConnectionFailedEvent>,
+// ) {
+//     for event in events.read() {
+//         if let Ok(local_player_events) = query.get(event.entity) {
+//             let _ = local_player_events.send(Event::ConnectionFailed(event.error.clone()));
+//         }
+//     }
+// }
 
 pub fn receive_chunk_listener(
     query: Query<&LocalPlayerEvents>,

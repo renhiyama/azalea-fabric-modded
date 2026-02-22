@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use azalea::{pathfinder, prelude::*};
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 
 #[derive(Clone, Component, Default)]
 struct State {
-    pub started: Arc<Mutex<bool>>,
+    pub started: Arc<RwLock<bool>>,
 }
 
 #[tokio::main]

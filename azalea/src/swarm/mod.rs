@@ -29,7 +29,7 @@ use crate::{Client, JoinOpts, client_impl::StartClientOpts};
 /// A swarm is a way to conveniently control many bots at once, while also
 /// being able to control bots at an individual level when desired.
 ///
-/// It can safely be cloned, so there should be no need to wrap them in a Mutex.
+/// It can safely be cloned, so there should be no need to wrap them in a RwLock.
 ///
 /// Swarms are created from [`SwarmBuilder`].
 ///
@@ -165,7 +165,7 @@ impl Swarm {
     ) -> Client {
         debug!(
             "add_with_opts called for account {} with opts {join_opts:?}",
-            account.username()
+            account.username
         );
 
         let mut address = self.address.read().clone();

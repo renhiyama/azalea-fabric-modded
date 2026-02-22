@@ -6,12 +6,12 @@ use azalea::{
     pathfinder::goals::{BlockPosGoal, RadiusGoal, XZGoal},
     prelude::*,
 };
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 
 use super::{CommandSource, Ctx};
 use crate::BotTask;
 
-pub fn register(commands: &mut CommandDispatcher<Mutex<CommandSource>>) {
+pub fn register(commands: &mut CommandDispatcher<RwLock<CommandSource>>) {
     commands.register(
         literal("goto")
             .executes(|ctx: &Ctx| {

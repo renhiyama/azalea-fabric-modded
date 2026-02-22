@@ -97,6 +97,7 @@ pub fn rejoin_after_delay(
 
             // our Entity will be reused since the account has the same uuid
             join_events.write(StartJoinServerEvent {
+                event_sender: None,
                 account: account.clone(),
                 connect_opts: connect_opts.clone(),
                 start_join_callback_tx: None,

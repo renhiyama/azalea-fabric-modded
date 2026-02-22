@@ -39,7 +39,7 @@ use azalea::{
     swarm::prelude::*,
 };
 use commands::{CommandSource, register_commands};
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 
 #[tokio::main]
 async fn main() -> AppExit {
@@ -114,14 +114,14 @@ pub enum BotTask {
 #[derive(Clone, Component, Default)]
 pub struct State {
     pub killaura: bool,
-    pub task: Arc<Mutex<BotTask>>,
+    pub task: Arc<RwLock<BotTask>>,
 }
 
 impl State {
     fn new() -> Self {
         Self {
             killaura: true,
-            task: Arc::new(Mutex::new(BotTask::None)),
+            task: Arc::new(RwLock::new(BotTask::None)),
         }
     }
 }
@@ -129,7 +129,7 @@ impl State {
 #[derive(Clone, Default, Resource)]
 struct SwarmState {
     pub args: Args,
-    pub commands: Arc<CommandDispatcher<Mutex<CommandSource>>>,
+    pub commands: Arc<CommandDispatcher<RwLock<CommandSource>>>,
 }
 
 async fn handle(bot: Client, event: azalea::Event, state: State) -> anyhow::Result<()> {
@@ -166,7 +166,7 @@ async fn handle(bot: Client, event: azalea::Event, state: State) -> anyhow::Resu
             if let Some(command) = command {
                 match swarm.commands.execute(
                     command,
-                    Mutex::new(CommandSource {
+                    RwLock::new(CommandSource {
                         bot: bot.clone(),
                         chat: chat.clone(),
                         state: state.clone(),

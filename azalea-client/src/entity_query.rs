@@ -9,7 +9,7 @@ use bevy_ecs::{
     query::{QueryData, QueryEntityError, QueryFilter, QueryItem, ROQueryItem},
     world::World,
 };
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 
 use crate::Client;
 
@@ -30,7 +30,7 @@ impl Client {
     ///
     /// This will panic if the component doesn't exist on the client.
     pub fn query_self<D: QueryData, R>(&self, f: impl FnOnce(QueryItem<D>) -> R) -> R {
-        let mut ecs = self.ecs.lock();
+        let mut ecs = self.ecs.write();
         let mut qs = ecs.query::<D>();
         let res = qs.get_mut(&mut ecs, self.entity).unwrap_or_else(|_| {
             panic!(
@@ -73,7 +73,7 @@ impl Client {
         entity: Entity,
         f: impl FnOnce(QueryItem<D>) -> R,
     ) -> Result<R, QueryEntityError> {
-        let mut ecs = self.ecs.lock();
+        let mut ecs = self.ecs.write();
         let mut qs = ecs.query::<D>();
         qs.get_mut(&mut ecs, entity).map(f)
     }
@@ -183,7 +183,7 @@ impl Client {
     /// If you're trying to get a component for this client, use
     /// [`Self::component`].
     pub fn entity_component<Q: Component + Clone>(&self, entity: Entity) -> Q {
-        let mut ecs = self.ecs.lock();
+        let mut ecs = self.ecs.write();
         let mut q = ecs.query::<&Q>();
         let components = q.get(&ecs, entity).unwrap_or_else(|_| {
             panic!(
@@ -199,7 +199,7 @@ impl Client {
     /// This is similar to [`Self::entity_component`] but returns an `Option`
     /// instead of panicking if the component isn't present.
     pub fn get_entity_component<Q: Component + Clone>(&self, entity: Entity) -> Option<Q> {
-        let mut ecs = self.ecs.lock();
+        let mut ecs = self.ecs.write();
         let mut q = ecs.query::<&Q>();
         let components = q.get(&ecs, entity).ok();
         components.cloned()
@@ -207,11 +207,11 @@ impl Client {
 }
 
 pub trait EntityPredicate<Q: QueryData, Filter: QueryFilter> {
-    fn find_any(&self, ecs_lock: Arc<Mutex<World>>, instance_name: &InstanceName)
+    fn find_any(&self, ecs_lock: Arc<RwLock<World>>, instance_name: &InstanceName)
     -> Option<Entity>;
     fn find_all_sorted(
         &self,
-        ecs_lock: Arc<Mutex<World>>,
+        ecs_lock: Arc<RwLock<World>>,
         instance_name: &InstanceName,
         nearest_to: Vec3,
     ) -> Vec<Entity>;
@@ -223,10 +223,10 @@ where
 {
     fn find_any(
         &self,
-        ecs_lock: Arc<Mutex<World>>,
+        ecs_lock: Arc<RwLock<World>>,
         instance_name: &InstanceName,
     ) -> Option<Entity> {
-        let mut ecs = ecs_lock.lock();
+        let mut ecs = ecs_lock.write();
         let mut query = ecs.query_filtered::<(Entity, &InstanceName, Q), Filter>();
         query
             .iter(&ecs)
@@ -236,11 +236,11 @@ where
 
     fn find_all_sorted(
         &self,
-        ecs_lock: Arc<Mutex<World>>,
+        ecs_lock: Arc<RwLock<World>>,
         instance_name: &InstanceName,
         nearest_to: Vec3,
     ) -> Vec<Entity> {
-        let mut ecs = ecs_lock.lock();
+        let mut ecs = ecs_lock.write();
         let mut query = ecs.query_filtered::<(Entity, &InstanceName, &Position, Q), Filter>();
         let mut entities = query
             .iter(&ecs)

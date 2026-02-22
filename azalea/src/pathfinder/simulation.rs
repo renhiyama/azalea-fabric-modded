@@ -104,10 +104,10 @@ fn create_simulation_player_complete_bundle(
             EntityKind::Player,
             world_name,
         ),
-        azalea_client::local_player::WorldHolder {
+        azalea_client::local_player::InstanceHolder {
             // the partial world is never actually used by the pathfinder, so we can leave it empty
-            partial: Arc::new(RwLock::new(PartialWorld::default())),
-            shared: world.clone(),
+            partial_instance: Arc::new(RwLock::new(PartialWorld::default())),
+            instance: world.clone(),
         },
         Inventory::default(),
         LocalGameMode::from(GameMode::Survival),

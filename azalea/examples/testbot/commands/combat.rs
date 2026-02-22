@@ -1,10 +1,10 @@
 use azalea::brigadier::prelude::*;
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 
 use super::{CommandSource, Ctx};
 use crate::State;
 
-pub fn register(commands: &mut CommandDispatcher<Mutex<CommandSource>>) {
+pub fn register(commands: &mut CommandDispatcher<RwLock<CommandSource>>) {
     commands.register(
         literal("killaura").then(argument("enabled", bool()).executes(|ctx: &Ctx| {
             let enabled = get_bool(ctx, "enabled").unwrap();

@@ -73,7 +73,7 @@ pub struct MiningSystems;
 
 impl Client {
     pub fn start_mining(&self, position: BlockPos) {
-        let mut ecs = self.ecs.lock();
+        let mut ecs = self.ecs.write();
 
         ecs.write_message(StartMiningBlockEvent {
             entity: self.entity,
@@ -85,7 +85,7 @@ impl Client {
     /// When enabled, the bot will mine any block that it is looking at if it is
     /// reachable.
     pub fn left_click_mine(&self, enabled: bool) {
-        let mut ecs = self.ecs.lock();
+        let mut ecs = self.ecs.write();
         let mut entity_mut = ecs.entity_mut(self.entity);
 
         if enabled {

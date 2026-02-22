@@ -6,7 +6,7 @@ use std::{cmp, time::Duration};
 use azalea_block::{BlockState, BlockTrait};
 use azalea_client::{
     StartSprintEvent, StartWalkEvent,
-    local_player::WorldHolder,
+    local_player::InstanceHolder,
     mining::{Mining, MiningSystems, StartMiningBlockEvent},
 };
 use azalea_core::{position::Vec3, tick::GameTick};
@@ -74,7 +74,7 @@ pub fn tick_execute_path(
         &Position,
         &Physics,
         Option<&Mining>,
-        &WorldHolder,
+        &InstanceHolder,
         &Inventory,
     )>,
     mut look_at_events: MessageWriter<LookAtEvent>,
@@ -97,7 +97,7 @@ pub fn tick_execute_path(
                 physics,
                 is_currently_mining: mining.is_some(),
                 can_mine: true,
-                world: world_holder.shared.clone(),
+                world: world_holder.instance.clone(),
                 menu: inventory.inventory_menu.clone(),
 
                 commands: &mut commands,

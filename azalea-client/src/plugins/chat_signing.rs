@@ -70,7 +70,7 @@ pub fn poll_request_certs_task(
                     commands.entity(entity).insert(QueuedCertsToSend {
                         certs: certs.clone(),
                     });
-                    *account.certs.lock() = Some(certs);
+                    *account.certs.write() = Some(certs);
                 }
                 Err(err) => {
                     error!("Error requesting certs: {err:?}. Retrying in an hour.");
@@ -108,7 +108,7 @@ pub fn request_certs_if_needed(
             continue;
         }
 
-        let certs = account.certs.lock();
+        let certs = account.certs.write();
         let should_refresh = if let Some(certs) = &*certs {
             // certs were already requested and we're waiting for them to refresh
 
@@ -127,7 +127,7 @@ pub fn request_certs_if_needed(
         if should_refresh && let Some(access_token) = &account.access_token {
             let task_pool = IoTaskPool::get();
 
-            let access_token = access_token.lock().clone();
+            let access_token = access_token.write().clone();
             debug!("Started task to fetch certs");
             let task = task_pool.spawn(async_compat::Compat::new(async move {
                 azalea_auth::certs::fetch_certificates(&access_token).await

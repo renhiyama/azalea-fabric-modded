@@ -7,7 +7,7 @@ use azalea_client::{
     connection::RawConnection,
     disconnect::DisconnectEvent,
     join::{ConnectOpts, StartJoinServerEvent},
-    local_player::{Experience, Hunger, TabList, WorldHolder},
+    local_player::{Hunger, InstanceHolder, TabList},
     packet::game::SendGamePacketEvent,
     player::{GameProfileComponent, PlayerInfo},
     start_ecs_runner,
@@ -211,6 +211,7 @@ impl Client {
             mpsc::unbounded_channel::<Entity>();
 
         ecs_lock.write().write_message(StartJoinServerEvent {
+            event_sender: None,
             account,
             connect_opts,
             start_join_callback_tx: Some(start_join_callback_tx),
@@ -327,13 +328,13 @@ impl Client {
     /// Get an `RwLock` with a reference to our (potentially shared) Minecraft
     /// world.
     ///
-    /// This gets the [`World`] from the client's [`WorldHolder`]
+    /// This gets the [`World`] from the client's [`InstanceHolder`]
     /// component. If it's a normal client, then it'll be the same as the
     /// world the client has loaded. If the client is using a shared world,
     /// then the shared world will be a superset of the client's world.
     pub fn world(&self) -> Arc<RwLock<World>> {
-        let world_holder = self.component::<WorldHolder>();
-        world_holder.shared.clone()
+        let world_holder = self.component::<InstanceHolder>();
+        world_holder.instance.clone()
     }
 
     /// Get an `RwLock` with a reference to the world that this client has
@@ -346,8 +347,8 @@ impl Client {
     /// let is_0_0_loaded = world.read().chunks.limited_get(&ChunkPos::new(0, 0)).is_some();
     /// # }
     pub fn partial_world(&self) -> Arc<RwLock<PartialWorld>> {
-        let world_holder = self.component::<WorldHolder>();
-        world_holder.partial.clone()
+        let world_holder = self.component::<InstanceHolder>();
+        world_holder.partial_instance.clone()
     }
 
     /// Returns whether we have a received the login packet yet.
@@ -377,12 +378,6 @@ impl Client {
         self.component::<Hunger>().to_owned()
     }
 
-    /// Get the experience of this client.
-    ///
-    /// This is a shortcut for `self.component::<Experience>().to_owned()`.
-    pub fn experience(&self) -> Experience {
-        self.component::<Experience>().to_owned()
-    }
 
     /// Get the username of this client.
     ///

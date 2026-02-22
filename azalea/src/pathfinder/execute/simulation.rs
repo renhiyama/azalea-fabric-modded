@@ -7,7 +7,7 @@ use std::{borrow::Cow, time::Instant};
 
 use azalea_client::{
     PhysicsState, SprintDirection, StartSprintEvent, StartWalkEvent,
-    local_player::WorldHolder,
+    local_player::InstanceHolder,
     mining::{Mining, MiningSystems, StartMiningBlockEvent},
 };
 use azalea_core::{position::BlockPos, tick::GameTick};
@@ -100,7 +100,7 @@ pub fn tick_execute_path(
         &Physics,
         &PhysicsState,
         Option<&Mining>,
-        &WorldHolder,
+        &InstanceHolder,
         &Attributes,
         &Inventory,
         Option<&SimulatingPathState>,
@@ -178,7 +178,7 @@ pub fn tick_execute_path(
                         physics,
                         is_currently_mining: mining.is_some(),
                         can_mine: true,
-                        world: world_holder.shared.clone(),
+                        world: world_holder.instance.clone(),
                         menu: inventory.inventory_menu.clone(),
 
                         commands: &mut commands,
@@ -240,12 +240,12 @@ pub fn tick_execute_path(
 
 fn run_simulations(
     executing_path: &ExecutingPath,
-    world_holder: &WorldHolder,
+    world_holder: &InstanceHolder,
     player: SimulatedPlayerBundle,
 ) -> SimulatingPathState {
     let swimming = player.physics.is_in_water();
 
-    let mut sim = Simulation::new(world_holder.shared.read().chunks.clone(), player.clone());
+    let mut sim = Simulation::new(world_holder.instance.read().chunks.clone(), player.clone());
 
     for nodes_ahead in [20, 15, 10, 5, 4, 3, 2, 1, 0] {
         if nodes_ahead + 1 >= executing_path.path.len() {

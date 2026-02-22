@@ -29,7 +29,7 @@ impl Plugin for TickCounterPlugin {
 }
 
 /// Increment the [`GameTickCounter`] on every entity that lives in an instance.
-fn increment_counter(mut query: Query<&mut TicksConnected, With<InstanceName>>) {
+pub fn increment_counter(mut query: Query<&mut TicksConnected, With<InstanceName>>) {
     for mut counter in &mut query {
         counter.0 += 1;
     }

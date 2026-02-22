@@ -137,7 +137,7 @@ pub async fn auth_with_account(
         while let Err(err) = {
             use azalea_auth::sessionserver::{self, SessionServerJoinOpts};
 
-            let access_token = access_token.lock().clone();
+            let access_token = access_token.write().clone();
 
             let uuid = &account
                 .uuid

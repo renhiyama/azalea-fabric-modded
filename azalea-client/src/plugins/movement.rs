@@ -534,7 +534,7 @@ impl Client {
     /// # }
     /// ```
     pub fn walk(&self, direction: WalkDirection) {
-        let mut ecs = self.ecs.lock();
+        let mut ecs = self.ecs.write();
         ecs.write_message(StartWalkEvent {
             entity: self.entity,
             direction,
@@ -558,7 +558,7 @@ impl Client {
     /// # }
     /// ```
     pub fn sprint(&self, direction: SprintDirection) {
-        let mut ecs = self.ecs.lock();
+        let mut ecs = self.ecs.write();
         ecs.write_message(StartSprintEvent {
             entity: self.entity,
             direction,

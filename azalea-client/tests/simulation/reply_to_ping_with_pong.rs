@@ -13,7 +13,7 @@ use azalea_protocol::packets::{
 };
 use azalea_registry::identifier::Identifier;
 use bevy_ecs::observer::On;
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 use simdnbt::owned::{NbtCompound, NbtTag};
 
 #[test]
@@ -22,7 +22,7 @@ fn reply_to_ping_with_pong() {
 
     let mut simulation = Simulation::new(ConnectionProtocol::Configuration);
 
-    let reply_count = Arc::new(Mutex::new(0));
+    let reply_count = Arc::new(RwLock::new(0));
     let reply_count_clone = reply_count.clone();
     simulation
         .app
@@ -31,13 +31,13 @@ fn reply_to_ping_with_pong() {
                 && let ServerboundConfigPacket::Pong(packet) = &send_config_packet.packet
             {
                 assert_eq!(packet.id, 321);
-                *reply_count_clone.lock() += 1;
+                *reply_count_clone.write() += 1;
             }
         });
 
     simulation.receive_packet(config::ClientboundPing { id: 321 });
     simulation.tick();
-    assert_eq!(*reply_count.lock(), 1);
+    assert_eq!(*reply_count.write(), 1);
 
     // move into game state and test ClientboundPing there
 
@@ -57,7 +57,7 @@ fn reply_to_ping_with_pong() {
     simulation.receive_packet(ClientboundFinishConfiguration);
     simulation.tick();
 
-    let reply_count = Arc::new(Mutex::new(0));
+    let reply_count = Arc::new(RwLock::new(0));
     let reply_count_clone = reply_count.clone();
     simulation
         .app
@@ -66,7 +66,7 @@ fn reply_to_ping_with_pong() {
                 && let ServerboundGamePacket::Pong(packet) = &send_game_packet.packet
             {
                 assert_eq!(packet.id, 123);
-                *reply_count_clone.lock() += 1;
+                *reply_count_clone.write() += 1;
             }
         });
 
@@ -74,5 +74,5 @@ fn reply_to_ping_with_pong() {
     simulation.receive_packet(game::ClientboundPing { id: 123 });
     simulation.tick();
 
-    assert_eq!(*reply_count.lock(), 1);
+    assert_eq!(*reply_count.write(), 1);
 }

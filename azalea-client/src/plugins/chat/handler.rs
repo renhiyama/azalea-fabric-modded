@@ -99,7 +99,7 @@ pub fn create_signature(
 ) -> azalea_crypto::signing::MessageSignature {
     use azalea_crypto::signing::SignChatMessageOptions;
 
-    let certs = account.certs.lock();
+    let certs = account.certs.write();
     let certs = certs.as_ref().expect("certs shouldn't be set back to None");
 
     let signature = azalea_crypto::signing::sign_chat_message(&SignChatMessageOptions {

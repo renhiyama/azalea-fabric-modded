@@ -7,11 +7,11 @@ use azalea::{
     player::GameProfileComponent,
 };
 use bevy_ecs::query::With;
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 
 use crate::State;
 
-pub type Ctx = CommandContext<Mutex<CommandSource>>;
+pub type Ctx = CommandContext<RwLock<CommandSource>>;
 
 pub struct CommandSource {
     pub bot: Client,
@@ -39,7 +39,7 @@ impl CommandSource {
     }
 }
 
-pub fn register_commands(commands: &mut CommandDispatcher<Mutex<CommandSource>>) {
+pub fn register_commands(commands: &mut CommandDispatcher<RwLock<CommandSource>>) {
     combat::register(commands);
     debug::register(commands);
     movement::register(commands);

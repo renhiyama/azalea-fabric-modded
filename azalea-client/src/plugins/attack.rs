@@ -49,7 +49,7 @@ impl Client {
     /// This doesn't automatically look at the entity or perform any
     /// range/visibility checks, so it might trigger anticheats.
     pub fn attack(&self, entity: Entity) {
-        self.ecs.lock().write_message(AttackEvent {
+        self.ecs.write().write_message(AttackEvent {
             entity: self.entity,
             target: entity,
         });
@@ -71,7 +71,7 @@ impl Client {
     ///
     /// Also see [`Client::has_attack_cooldown`].
     pub fn attack_cooldown_remaining_ticks(&self) -> usize {
-        let mut ecs = self.ecs.lock();
+        let mut ecs = self.ecs.write();
         let Ok((attributes, ticks_since_last_attack)) = ecs
             .query::<(&Attributes, &TicksSinceLastAttack)>()
             .get(&ecs, self.entity)

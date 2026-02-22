@@ -88,7 +88,7 @@ impl Client {
             "Hotbar slot index must be in the range 0..=8"
         );
 
-        let mut ecs = self.ecs.lock();
+        let mut ecs = self.ecs.write();
         ecs.trigger(SetSelectedHotbarSlotEvent {
             entity: self.entity,
             slot: new_hotbar_slot_index,
@@ -177,7 +177,7 @@ pub fn handle_client_side_close_container_trigger(
         // this isn't the same as what vanilla does. i believe vanilla synchronizes the
         // slots between inventoryMenu and containerMenu by just having the player slots
         // point to the same ItemStack in memory, but emulating this in rust would
-        // require us to wrap our `ItemStack`s as `Arc<Mutex<ItemStack>>` which would
+        // require us to wrap our `ItemStack`s as `Arc<RwLock<ItemStack>>` which would
         // have kinda terrible ergonomics.
 
         // the simpler solution i chose to go with here is to only copy the player slots

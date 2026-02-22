@@ -1,4 +1,4 @@
-use azalea_client::{chat::SendChatEvent, local_player::WorldHolder};
+use azalea_client::{chat::SendChatEvent, local_player::InstanceHolder};
 use azalea_core::position::Vec3;
 use bevy_ecs::prelude::*;
 
@@ -36,7 +36,7 @@ use crate::pathfinder::moves::should_mine_block_state;
 pub struct PathfinderDebugParticles;
 
 pub fn debug_render_path_with_particles(
-    mut query: Query<(Entity, &ExecutingPath, &WorldHolder), With<PathfinderDebugParticles>>,
+    mut query: Query<(Entity, &ExecutingPath, &InstanceHolder), With<PathfinderDebugParticles>>,
     // chat_events is Option because the tests don't have SendChatEvent
     // and we have to use ResMut<Messages> because bevy doesn't support Option<MessageWriter>
     chat_events: Option<ResMut<Messages<SendChatEvent>>>,
@@ -56,7 +56,7 @@ pub fn debug_render_path_with_particles(
             continue;
         }
 
-        let chunks = &world_holder.shared.read().chunks;
+        let chunks = &world_holder.instance.read().chunks;
 
         let mut start = executing_path.last_reached_node;
         for (i, edge) in executing_path.path.iter().enumerate() {

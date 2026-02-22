@@ -19,11 +19,11 @@ use azalea_inventory::{Menu, components::MaxStackSize};
 use azalea_world::Worlds;
 use bevy_app::AppExit;
 use bevy_ecs::{message::Messages, query::With, world::EntityRef};
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 
 use super::{CommandSource, Ctx};
 
-pub fn register(commands: &mut CommandDispatcher<Mutex<CommandSource>>) {
+pub fn register(commands: &mut CommandDispatcher<RwLock<CommandSource>>) {
     commands.register(literal("ping").executes(|ctx: &Ctx| {
         let source = ctx.source.lock();
         source.reply("pong!");

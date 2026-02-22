@@ -81,8 +81,75 @@ impl ConfigPacketHandler<'_> {
     }
 
     pub fn custom_payload(&mut self, p: &ClientboundCustomPayload) {
-        debug!("Got custom payload packet {p:?}");
-        // Emit event for Fabric handshake handling
+        let channel_name = p.identifier.to_string();
+        tracing::info!("CUSTOM PAYLOAD RECEIVED on channel: {}", channel_name);
+
+        // Handle Fabric API registry sync synchronously to avoid being disconnected
+        // before we can respond.
+        if channel_name == "fabric:registry/sync" {
+            tracing::info!(
+                "Fabric registry sync received ({} bytes), sending completion acknowledgment",
+                p.data.len()
+            );
+            use azalea_registry::identifier::Identifier;
+            self.ecs
+                .commands()
+                .trigger(SendConfigPacketEvent::new(
+                    self.player,
+                    ServerboundCustomPayload {
+                        identifier: Identifier::new("fabric:registry/sync/complete"),
+                        data: vec![].into(),
+                    },
+                ));
+            tracing::info!("Fabric registry sync completion sent");
+        }
+
+        // Handle Cardinal Components API entity sync packets.
+        // We just acknowledge receipt by doing nothing - the bot doesn't need component data.
+        if channel_name == "cardinal-components:entity_sync" {
+            tracing::info!(
+                "CONFIG: Received cardinal-components:entity_sync ({} bytes), reading packet data",
+                p.data.len()
+            );
+            // Try to read the packet data to show we can handle it
+            // Format: entity_id (varint) + component_data
+            if p.data.len() >= 1 {
+                tracing::info!(
+                    "  Packet data (first 32 bytes): {:?}",
+                    &p.data[..p.data.len().min(32)]
+                );
+            }
+        }
+
+        // When we receive minecraft:register, we need to respond by registering
+        // the Fabric API channels so the server knows we support them.
+        if channel_name == "minecraft:register" {
+            tracing::info!("Received minecraft:register, registering Fabric and CCA channels");
+            use azalea_registry::identifier::Identifier;
+            // Send minecraft:register back with the Fabric channels we support
+            // The payload is a list of null-terminated strings
+            let mut payload = Vec::new();
+            payload.extend_from_slice(b"fabric:registry/sync\0");
+            payload.extend_from_slice(b"fabric:registry/sync/complete\0");
+            // Register Cardinal Components API channels for mods like Traveler's Backpack
+            // This must be done in config phase so the server knows we support CCA
+            payload.extend_from_slice(b"cardinal-components:entity_sync\0");
+            payload.extend_from_slice(b"cardinal-components:block_sync\0");
+            payload.extend_from_slice(b"cardinal-components:chunk_sync\0");
+            payload.extend_from_slice(b"cardinal-components:world_sync\0");
+            self.ecs
+                .commands()
+                .trigger(SendConfigPacketEvent::new(
+                    self.player,
+                    ServerboundCustomPayload {
+                        identifier: Identifier::new("minecraft:register"),
+                        data: payload.into(),
+                    },
+                ));
+            tracing::info!("Registered Fabric and CCA channels with server");
+        }
+
+        // Also emit event for FabricHandshakePlugin to handle c:version/c:register
         as_system::<MessageWriter<_>>(self.ecs, |mut events| {
             events.write(ReceiveConfigPacketEvent {
                 entity: self.player,

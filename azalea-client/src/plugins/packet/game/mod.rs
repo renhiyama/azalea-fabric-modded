@@ -280,6 +280,7 @@ impl GamePacketHandler<'_> {
                     azalea_world::chunk_storage::calculate_chunk_storage_range(
                         client_information.view_distance.into(),
                     ),
+                    -64,
                     // this argument makes it so other clients don't update this player entity
                     // in a shared instance
                     Some(self.player),
@@ -1549,6 +1550,7 @@ impl GamePacketHandler<'_> {
                     azalea_world::chunk_storage::calculate_chunk_storage_range(
                         client_information.view_distance.into(),
                     ),
+                    -64,
                     Some(self.player),
                 );
                 instance_holder.instance = weak_instance;

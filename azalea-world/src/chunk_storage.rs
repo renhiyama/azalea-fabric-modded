@@ -37,6 +37,8 @@ pub struct PartialChunkStorage {
     view_center: ChunkPos,
     pub(crate) chunk_radius: u32,
     view_range: u32,
+    /// The minimum Y coordinate in the world.
+    pub min_y: i32,
     // chunks is a list of size chunk_radius * chunk_radius
     chunks: Box<[Option<Arc<RwLock<Chunk>>>]>,
 }
@@ -108,12 +110,13 @@ impl Default for Chunk {
 }
 
 impl PartialChunkStorage {
-    pub fn new(chunk_radius: u32) -> Self {
+    pub fn new(chunk_radius: u32, min_y: i32) -> Self {
         let view_range = chunk_radius * 2 + 1;
         PartialChunkStorage {
             view_center: ChunkPos::new(0, 0),
             chunk_radius,
             view_range,
+            min_y,
             chunks: vec![None; (view_range * view_range) as usize].into(),
         }
     }
@@ -179,7 +182,7 @@ impl PartialChunkStorage {
         let chunk_pos = ChunkPos::from(pos);
         let chunk = self.get(&chunk_pos)?;
         let chunk = chunk.read();
-        chunk.get_block_state(&ChunkBlockPos::from(pos), 0)
+        chunk.get_block_state(&ChunkBlockPos::from(pos), self.min_y)
     }
 
     pub fn get(&self, pos: &ChunkPos) -> Option<Arc<RwLock<Chunk>>> {
@@ -565,7 +568,7 @@ impl Section {
 
 impl Default for PartialChunkStorage {
     fn default() -> Self {
-        Self::new(8)
+        Self::new(8, -64)
     }
 }
 impl Default for ChunkStorage {
@@ -642,7 +645,7 @@ mod tests {
 
     #[test]
     fn test_chunk_pos_from_index() {
-        let mut partial_chunk_storage = PartialChunkStorage::new(5);
+        let mut partial_chunk_storage = PartialChunkStorage::new(5, -64);
         partial_chunk_storage.update_view_center(ChunkPos::new(0, -1));
         assert_eq!(
             partial_chunk_storage.chunk_pos_from_index(

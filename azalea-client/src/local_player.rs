@@ -125,6 +125,7 @@ impl InstanceHolder {
                 azalea_world::chunk_storage::calculate_chunk_storage_range(
                     client_information.view_distance.into(),
                 ),
+                -64,
                 Some(entity),
             ))),
         }

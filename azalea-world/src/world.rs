@@ -30,9 +30,9 @@ pub struct PartialWorld {
 }
 
 impl PartialWorld {
-    pub fn new(chunk_radius: u32, owner_entity: Option<Entity>) -> Self {
+    pub fn new(chunk_radius: u32, min_y: i32, owner_entity: Option<Entity>) -> Self {
         PartialWorld {
-            chunks: PartialChunkStorage::new(chunk_radius),
+            chunks: PartialChunkStorage::new(chunk_radius, min_y),
             entity_infos: PartialEntityInfos::new(owner_entity),
         }
     }
@@ -40,7 +40,7 @@ impl PartialWorld {
     /// Clears the internal references to chunks in the [`PartialWorld`] and
     /// resets the view center.
     pub fn reset(&mut self) {
-        self.chunks = PartialChunkStorage::new(self.chunks.chunk_radius);
+        self.chunks = PartialChunkStorage::new(self.chunks.chunk_radius, -64);
     }
 }
 

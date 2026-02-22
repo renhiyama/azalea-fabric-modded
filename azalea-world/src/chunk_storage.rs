@@ -175,6 +175,18 @@ impl PartialChunkStorage {
         in_range_for_view_center_and_radius(chunk_pos, self.view_center, self.chunk_radius)
     }
 
+    pub fn get_block_state(&self, pos: BlockPos) -> Option<BlockState> {
+        let chunk_pos = ChunkPos::from(pos);
+        let chunk = self.get(&chunk_pos)?;
+        let chunk = chunk.read();
+        chunk.get_block_state(&ChunkBlockPos::from(pos), 0)
+    }
+
+    pub fn get(&self, pos: &ChunkPos) -> Option<Arc<RwLock<Chunk>>> {
+        let index = self.index_from_chunk_pos(pos) as usize;
+        self.chunks.get(index).and_then(|c| c.clone())
+    }
+
     pub fn set_block_state(
         &self,
         pos: BlockPos,

@@ -502,7 +502,7 @@ impl AzBuf for Section {
         let states = PalettedContainer::<BlockState>::read(buf)?;
 
         for i in 0..states.storage.size() {
-            if !BlockState::is_valid_state(states.storage.get(i) as BlockStateIntegerRepr) {
+            if !BlockState::is_valid_state_extended(states.storage.get(i) as BlockStateIntegerRepr) {
                 return Err(BufReadError::Custom(format!(
                     "Invalid block state {} (index {i}) found in section.",
                     states.storage.get(i)

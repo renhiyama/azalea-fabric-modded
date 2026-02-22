@@ -1,6 +1,7 @@
 use std::{
     fmt::{self, Debug},
     io::{self, Cursor, Write},
+    sync::atomic::{AtomicU32, Ordering},
 };
 
 use azalea_buf::{AzBuf, AzBufVar, BufReadError};
@@ -16,6 +17,15 @@ use crate::BlockTrait;
 /// This does not affect protocol serialization, it just allows you to make the
 /// internal type smaller if you want.
 pub type BlockStateIntegerRepr = u16;
+
+/// Extended block state range for modded support.
+/// This is also defined in range.rs for convenience.
+static MOD_MAX_STATE: AtomicU32 = AtomicU32::new(0);
+
+/// Extend the valid block state range beyond vanilla's MAX_STATE.
+pub fn set_mod_max_state(new_max: u32) {
+    MOD_MAX_STATE.store(new_max, Ordering::Relaxed);
+}
 
 /// A representation of a state a block can be in.
 ///
@@ -54,6 +64,19 @@ impl BlockState {
         state_id <= Self::MAX_STATE
     }
 
+    /// Whether the block state is valid, including mod-registered states.
+    ///
+    /// This checks both vanilla states (up to MAX_STATE) and any mod-registered
+    /// range set via [`set_mod_max_state`].
+    #[inline]
+    pub fn is_valid_state_extended(state_id: BlockStateIntegerRepr) -> bool {
+        if state_id <= Self::MAX_STATE {
+            return true;
+        }
+        let mod_max = MOD_MAX_STATE.load(Ordering::Relaxed);
+        mod_max > 0 && state_id <= mod_max as BlockStateIntegerRepr
+    }
+
     /// Returns true if the block is air.
     ///
     /// This only checks for normal air, not other types like cave air.
@@ -70,15 +93,25 @@ impl BlockState {
     pub const fn id(&self) -> BlockStateIntegerRepr {
         self.id
     }
+
+    /// Construct a BlockState from a raw ID without any validity check.
+    ///
+    /// # Safety
+    /// The caller must ensure `id` is a valid block state ID.
+    #[inline]
+    pub const fn from_raw_unchecked(id: BlockStateIntegerRepr) -> Self {
+        Self { id }
+    }
 }
 
 impl TryFrom<u32> for BlockState {
     type Error = ();
 
-    /// Safely converts a u32 state ID to a block state.
+    /// Safely converts a u32 state ID to a block state, accepting both vanilla
+    /// and mod-registered IDs (if [`set_mod_max_state`] has been called).
     fn try_from(state_id: u32) -> Result<Self, Self::Error> {
         let state_id = state_id as BlockStateIntegerRepr;
-        if Self::is_valid_state(state_id) {
+        if Self::is_valid_state_extended(state_id) {
             Ok(BlockState { id: state_id })
         } else {
             Err(())

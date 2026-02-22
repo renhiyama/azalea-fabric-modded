@@ -2,6 +2,7 @@
 
 mod behavior;
 pub mod block_state;
+pub mod collision_registry;
 pub mod fluid_state;
 mod generated;
 mod range;
@@ -12,7 +13,12 @@ use std::{any::Any, collections::HashMap, str::FromStr};
 use azalea_registry::builtin::BlockKind;
 pub use behavior::BlockBehavior;
 // re-exported for convenience
-pub use block_state::BlockState;
+pub use block_state::{BlockState, set_mod_max_state};
+pub use collision_registry::{
+    SimpleCollisionShape, get_modded_collision_shape, init_modded_collision_registry,
+    is_modded_block_collision_empty, is_modded_block_collision_full,
+    register_modded_collision_shape, register_modded_collision_shapes,
+};
 pub use generated::{blocks, properties};
 pub use range::BlockStates;
 
